@@ -4,9 +4,9 @@ import streamlit as st
 import random
 from collections import Counter
 
-st.set_page_config(page_title="Interference Detector", page_icon="⚠️", layout="centered")
+st.set_page_config(page_title="Answers", page_icon="⚠️", layout="centered")
 
-APP_TITLE = "Interference Detector"
+APP_TITLE = "Answers"
 APP_SUBTITLE = "Not a personality test. Not therapy. A mirror for interference."
 
 ANSWER_OPTIONS = ["True", "False"]
@@ -79,21 +79,44 @@ def reset_all():
     st.session_state.topic_counts = Counter()
 
 def detect_cluster(answers: dict):
+def detect_cluster(answers: dict):
     true_qids = [qid for qid, ans in answers.items() if ans == "True"]
+
     topic_counts = Counter()
     for qid in true_qids:
         for topic in Q_TOPICS.get(qid, []):
             topic_counts[topic] += 1
 
-    if not topic_counts:
-        return None, topic_counts, len(true_qids)
+    if not topic_counts or len(true_qids) < 8:
+        return None, None, topic_counts
 
-    top_topic, top_count = topic_counts.most_common(1)[0]
-    # tight thresholds (authoritative)
-    if len(true_qids) >= 8 and top_count >= 3:
-        return top_topic, topic_counts, len(true_qids)
+    ranked = topic_counts.most_common()
 
-    return None, topic_counts, len(true_qids)
+    major_topic, major_count = ranked[0]
+    minor_topic, minor_count = ranked[1] if len(ranked) > 1 else (None, 0)
+
+major, minor, counts = detect_cluster(st.session_state.answers25)
+
+st.subheader("This is what’s in the way")
+
+if major:
+    st.markdown("**Primary interference:**")
+    st.write(synthesize(major))
+
+    if minor:
+        st.markdown("**Reinforcing interference:**")
+        st.write(synthesize(minor))
+
+    st.write("Left unaddressed, these will continue reinforcing each other.")
+
+    st.markdown("**Remove the interference — or keep managing around it?**")
+else:
+    st.write(
+        "Multiple competing interferences are present, preventing a single corrective action from emerging."
+    )
+
+
+
 
 # ─────────────────────────────────────────────
 # Session init
