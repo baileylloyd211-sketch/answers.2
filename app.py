@@ -245,7 +245,7 @@ elif st.session_state.stage == "results":
     st.divider()
     if st.button("Begin again", type="primary", use_container_width=True):
         reset_all()
-        st.rerun()        st.markdown("**Reinforcing interference:**")
+        st.rerun()        
         st.write(synthesize(minor))
 
     st.write("Left unaddressed, these will continue reinforcing each other.")
