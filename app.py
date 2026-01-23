@@ -1,110 +1,251 @@
-# app.py — Interference Detector (True/False, Randomized, Pronounless)
-# Run: streamlit run app.py
-import streamlit as st
 import random
 from collections import Counter
+import streamlit as st
 
-st.set_page_config(page_title="Answers", page_icon="⚠️", layout="centered")
+# ──────────────────────────────────────────────────────────────
+# Config
+# ──────────────────────────────────────────────────────────────
+st.set_page_config(page_title="Answers (25)", page_icon="🧭", layout="centered")
 
-APP_TITLE = "Answers"
-APP_SUBTITLE = "Not a personality test. Not therapy. A mirror for interference."
+OPTIONS = ["almost always", "sometimes", "rarely", "never"]
 
-ANSWER_OPTIONS = ["True", "False"]
+# Treat these as "signal present" for clustering
+TRUTHY = {"almost always", "sometimes"}
 
+# ──────────────────────────────────────────────────────────────
+# Questions (edit these freely)
+# ──────────────────────────────────────────────────────────────
 QUESTIONS_25 = [
-    {"id": "Q1",  "text": "Is real effort being invested in something that does not actually matter?"},
-    {"id": "Q2",  "text": "Is it difficult to clearly explain why the current direction deserves the next five years?"},
-    {"id": "Q3",  "text": "Is activity being mistaken for progress?"},
-    {"id": "Q4",  "text": "Has too much time been invested to admit the wrong ladder may be involved?"},
-    {"id": "Q5",  "text": "Does performance degrade when pressure increases instead of sharpening?"},
-    {"id": "Q6",  "text": "Are situations avoided where failure would be visible and undeniable?"},
-    {"id": "Q7",  "text": "Are comfort tasks prioritized over consequential ones?"},
-    {"id": "Q8",  "text": "Is operation occurring below actual capacity because it feels safer?"},
-    {"id": "Q9",  "text": "Is long-term progress being traded for short-term relief?"},
-    {"id": "Q10", "text": "Is lack of time claimed while time allocation is still controlled?"},
-    {"id": "Q11", "text": "Are days primarily reactive rather than intentional?"},
-    {"id": "Q12", "text": "Are hard decisions delayed until urgency removes choice?"},
-    {"id": "Q13", "text": "Does spending contradict stated priorities?"},
-    {"id": "Q14", "text": "Is financial clarity avoided because it would force change?"},
-    {"id": "Q15", "text": "Are resources used to manage discomfort instead of fixing root problems?"},
-    {"id": "Q16", "text": "Is short-term relief chosen even when it creates long-term pressure?"},
-    {"id": "Q17", "text": "Does at least one key relationship benefit from things staying exactly as they are?"},
-    {"id": "Q18", "text": "Is ambition limited to avoid disruption or conflict?"},
-    {"id": "Q19", "text": "Is honesty withheld to preserve access, approval, or stability?"},
-    {"id": "Q20", "text": "Is it already clear who would be uncomfortable if change occurred?"},
-    {"id": "Q21", "text": "Is success distrusted because of fear of losing control?"},
-    {"id": "Q22", "text": "Are exit routes kept open so full commitment is never required?"},
-    {"id": "Q23", "text": "Is retreat chosen when consistency becomes non-negotiable?"},
-    {"id": "Q24", "text": "Is scope kept small to keep responsibility manageable?"},
-    {"id": "Q25", "text": "If nothing changes, is the outcome already known—and being tolerated?"},
+    {"id": "Q1", "text": "I know what I should do, but I stall anyway."},
+    {"id": "Q2", "text": "I avoid pressure until it becomes urgent."},
+    {"id": "Q3", "text": "I spend time managing discomfort instead of moving forward."},
+    {"id": "Q4", "text": "I keep plans vague to avoid being measured."},
+    {"id": "Q5", "text": "I protect peace by not saying what needs to be said."},
+
+    {"id": "Q6", "text": "My effort goes into motion, not outcomes."},
+    {"id": "Q7", "text": "I sidestep responsibility that comes with higher capacity."},
+    {"id": "Q8", "text": "I overthink to avoid committing."},
+    {"id": "Q9", "text": "I use distractions to reduce pressure."},
+    {"id": "Q10", "text": "I stay busy but don’t advance the core objective."},
+
+    {"id": "Q11", "text": "I spend resources managing symptoms, not causes."},
+    {"id": "Q12", "text": "I avoid conflict even when honesty is required."},
+    {"id": "Q13", "text": "I delay decisions to avoid being wrong in public."},
+    {"id": "Q14", "text": "I hesitate to scale up because exposure increases."},
+    {"id": "Q15", "text": "I compromise ambition to keep relationships stable."},
+
+    {"id": "Q16", "text": "I feel capable but operate below capacity."},
+    {"id": "Q17", "text": "I avoid tasks that would clearly reveal my level."},
+    {"id": "Q18", "text": "I spend time refining instead of shipping."},
+    {"id": "Q19", "text": "I avoid using the resources that would solve the problem."},
+    {"id": "Q20", "text": "I keep things small so consequences stay small."},
+
+    {"id": "Q21", "text": "I avoid growth because it changes what people expect from me."},
+    {"id": "Q22", "text": "I avoid stepping into roles where failure is visible."},
+    {"id": "Q23", "text": "I don’t fully commit because success would demand more."},
+    {"id": "Q24", "text": "I hold back because I don’t want the spotlight."},
+    {"id": "Q25", "text": "I avoid higher responsibility even when I know I can handle it."},
 ]
 
-# 6 interference domains
-Q_TOPICS = {
-    "Q1":  ["misalignment"], "Q2":  ["misalignment"], "Q3":  ["misalignment"], "Q4":  ["misalignment"],
-    "Q5":  ["pressure_avoidance"], "Q6":  ["pressure_avoidance"], "Q7":  ["pressure_avoidance"], "Q8":  ["pressure_avoidance"],
-    "Q9":  ["execution_avoidance"], "Q10": ["execution_avoidance"], "Q11": ["execution_avoidance"], "Q12": ["execution_avoidance"],
-    "Q13": ["resource_misuse"], "Q14": ["resource_misuse"], "Q15": ["resource_misuse"], "Q16": ["resource_misuse"],
-    "Q17": ["relationship_constraint"], "Q18": ["relationship_constraint"], "Q19": ["relationship_constraint"], "Q20": ["relationship_constraint"],
-    "Q21": ["threshold_fear"], "Q22": ["threshold_fear"], "Q23": ["threshold_fear"], "Q24": ["threshold_fear"], "Q25": ["threshold_fear"],
+# ──────────────────────────────────────────────────────────────
+# Question → Topic map (edit as needed)
+# ──────────────────────────────────────────────────────────────
+QUESTION_TOPIC_MAP = {
+    "Q1": ["execution_avoidance"],
+    "Q2": ["pressure_avoidance"],
+    "Q3": ["execution_avoidance"],
+    "Q4": ["threshold_fear"],
+    "Q5": ["relationship_constraint"],
+
+    "Q6": ["misalignment"],
+    "Q7": ["threshold_fear"],
+    "Q8": ["execution_avoidance"],
+    "Q9": ["pressure_avoidance"],
+    "Q10": ["misalignment"],
+
+    "Q11": ["resource_misuse"],
+    "Q12": ["relationship_constraint"],
+    "Q13": ["threshold_fear"],
+    "Q14": ["threshold_fear"],
+    "Q15": ["relationship_constraint"],
+
+    "Q16": ["pressure_avoidance"],
+    "Q17": ["threshold_fear"],
+    "Q18": ["execution_avoidance"],
+    "Q19": ["resource_misuse"],
+    "Q20": ["threshold_fear"],
+
+    "Q21": ["threshold_fear"],
+    "Q22": ["threshold_fear"],
+    "Q23": ["threshold_fear"],
+    "Q24": ["threshold_fear"],
+    "Q25": ["threshold_fear"],
 }
 
+# ──────────────────────────────────────────────────────────────
+# Synthesis – sharp, concise, professional
+# ──────────────────────────────────────────────────────────────
 def synthesize(topic: str) -> str:
     synthesis = {
         "misalignment":
-            "Effort is being applied to a direction that does not justify continued investment, creating motion without progress.",
+            "Effort is directed toward activities that do not advance the core objective.",
         "pressure_avoidance":
-            "Pressure is being avoided rather than absorbed, resulting in sustained operation below actual capacity.",
+            "Pressure is being managed through avoidance rather than absorption, limiting sustained performance at full capacity.",
         "execution_avoidance":
-            "Time and attention are being used to reduce discomfort instead of producing forward movement.",
+            "Time and attention are allocated to reducing immediate discomfort rather than generating forward progress.",
         "resource_misuse":
-            "Resources are being spent to manage symptoms rather than resolve the conditions creating pressure.",
+            "Resources are primarily expended on symptom management instead of addressing root causes.",
         "relationship_constraint":
-            "At least one relationship is being protected at the cost of honesty, expansion, or ambition.",
+            "Certain relationships are being preserved at the expense of required honesty or ambition.",
         "threshold_fear":
-            "Growth is being limited to avoid the responsibility and exposure that higher capacity would require.",
+            "Growth is constrained to avoid the increased responsibility and visibility that come with higher performance.",
     }
     return synthesis.get(
         topic,
-        "Multiple competing interferences are present, preventing a single corrective action from emerging."
+        "Multiple patterns are present at comparable strength, preventing a single dominant interference from emerging."
     )
 
+def topic_title(topic: str) -> str:
+    return {
+        "misalignment": "Misalignment",
+        "pressure_avoidance": "Pressure Avoidance",
+        "execution_avoidance": "Execution Avoidance",
+        "resource_misuse": "Resource Misuse",
+        "relationship_constraint": "Relationship Constraint",
+        "threshold_fear": "Threshold Fear",
+    }.get(topic, topic.replace("_", " ").title())
+
+# ──────────────────────────────────────────────────────────────
+# State helpers
+# ──────────────────────────────────────────────────────────────
 def reset_all():
     st.session_state.stage = "intro"
     st.session_state.answers25 = {}
-    st.session_state.question_order = random.sample(
-        [q["id"] for q in QUESTIONS_25], k=len(QUESTIONS_25)
-    )
+    st.session_state.question_order = random.sample([q["id"] for q in QUESTIONS_25], k=len(QUESTIONS_25))
+    st.session_state.idx = 0
     st.session_state.cluster_topic = None
     st.session_state.topic_counts = Counter()
 
-def detect_cluster(answers: dict):
-def detect_cluster(answers: dict):
-    true_qids = [qid for qid, ans in answers.items() if ans == "True"]
+def ensure_state():
+    if "stage" not in st.session_state:
+        reset_all()
 
-    topic_counts = Counter()
+# ──────────────────────────────────────────────────────────────
+# Cluster logic
+# ──────────────────────────────────────────────────────────────
+def detect_cluster(answers: dict):
+    true_qids = [qid for qid, ans in answers.items() if ans in TRUTHY]
+
+    counts = Counter()
     for qid in true_qids:
-        for topic in Q_TOPICS.get(qid, []):
-            topic_counts[topic] += 1
+        for t in QUESTION_TOPIC_MAP.get(qid, []):
+            counts[t] += 1
 
-    if not topic_counts or len(true_qids) < 8:
-        return None, None, topic_counts
+    if not counts:
+        return None, counts
 
-    ranked = topic_counts.most_common()
+    top_topic, top_count = counts.most_common(1)[0]
+    MIN_HITS = 3
+    if top_count >= MIN_HITS:
+        return top_topic, counts
 
-    major_topic, major_count = ranked[0]
-    minor_topic, minor_count = ranked[1] if len(ranked) > 1 else (None, 0)
+    return None, counts
 
-major, minor, counts = detect_cluster(st.session_state.answers25)
+# ──────────────────────────────────────────────────────────────
+# UI
+# ──────────────────────────────────────────────────────────────
+ensure_state()
 
-st.subheader("This is what’s in the way")
+st.title("Answers (25)")
+st.caption("Not a test. No grades. Just signal → correction.")
 
-if major:
-    st.markdown("**Primary interference:**")
-    st.write(synthesize(major))
+col_reset, col_spacer = st.columns([1, 4])
+with col_reset:
+    if st.button("Restart entire session", use_container_width=True):
+        reset_all()
+        st.rerun()
 
-    if minor:
-        st.markdown("**Reinforcing interference:**")
+if st.session_state.stage == "intro":
+    st.markdown("""
+    Answer 25 prompts honestly.  
+    At the end you’ll receive the dominant interference pattern (if one clears the threshold) along with a concise diagnostic statement.
+    """)
+    if st.button("Begin", type="primary", use_container_width=True):
+        st.session_state.stage = "run"
+        st.rerun()
+
+elif st.session_state.stage == "run":
+    order = st.session_state.question_order
+    idx = st.session_state.idx
+
+    if idx >= len(order):
+        topic, counts = detect_cluster(st.session_state.answers25)
+        st.session_state.cluster_topic = topic
+        st.session_state.topic_counts = counts
+        st.session_state.stage = "results"
+        st.rerun()
+
+    qid = order[idx]
+    q = next(x for x in QUESTIONS_25 if x["id"] == qid)
+
+    st.subheader(f"{idx + 1} / 25")
+    st.write(q["text"])
+
+    # Auto-save on selection
+    def save_current():
+        if f"radio_{qid}" in st.session_state:
+            st.session_state.answers25[qid] = st.session_state[f"radio_{qid}"]
+
+    current_answer = st.session_state.answers25.get(qid)
+    selected_index = OPTIONS.index(current_answer) if current_answer in OPTIONS else 1  # default "sometimes" if unset
+
+    st.radio(
+        "How often does this apply?",
+        OPTIONS,
+        index=selected_index,
+        key=f"radio_{qid}",
+        on_change=save_current,
+    )
+
+    st.progress((idx + 1) / len(order))
+
+    col_back, col_next = st.columns([1, 2])
+    with col_back:
+        if st.button("← Back", use_container_width=True, disabled=(idx == 0)):
+            st.session_state.idx = idx - 1
+            st.rerun()
+    with col_next:
+        if st.button("Next →", type="primary", use_container_width=True):
+            save_current()  # safety
+            st.session_state.idx = idx + 1
+            st.rerun()
+
+elif st.session_state.stage == "results":
+    topic = st.session_state.cluster_topic
+    counts = st.session_state.topic_counts
+
+    st.subheader("Result")
+
+    if topic is None:
+        st.write("No single pattern reached the minimum signal threshold (≥3 truthy responses).")
+        st.write("This typically indicates either distributed patterns or predominantly 'rarely/never' responses.")
+    else:
+        st.markdown(f"### Dominant interference: **{topic_title(topic)}**")
+        st.write(synthesize(topic))
+
+    st.divider()
+    st.subheader("Signal strength by pattern (truthy responses only)")
+    if counts:
+        for t, n in counts.most_common():
+            strength = "strong" if n >= 5 else "moderate" if n >= 3 else "weak"
+            st.write(f"- **{topic_title(t)}** ({n} hits, {strength}): {synthesize(t)}")
+    else:
+        st.write("No truthy responses recorded.")
+
+    st.divider()
+    if st.button("Begin again", type="primary", use_container_width=True):
+        reset_all()
+        st.rerun()        st.markdown("**Reinforcing interference:**")
         st.write(synthesize(minor))
 
     st.write("Left unaddressed, these will continue reinforcing each other.")
