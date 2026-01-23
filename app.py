@@ -276,8 +276,8 @@ if "topic_counts" not in st.session_state:
 # ─────────────────────────────────────────────
 # UI
 # ─────────────────────────────────────────────
-st.title(APP_TITLE)
-st.caption(APP_SUBTITLE)
+st.title("Answers (25)")
+st.caption("Not a test. No grades. Just signal → correction.")
 
 if st.session_state.stage == "intro":
     st.write("Answer quickly. If something feels too specific, answer anyway.")
