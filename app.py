@@ -85,25 +85,7 @@ QUESTION_TOPIC_MAP = {
 # ──────────────────────────────────────────────────────────────
 # Synthesis – sharp, concise, professional
 # ──────────────────────────────────────────────────────────────
-def synthesize(topic: str) -> str:
-    synthesis = {
-        "misalignment":
-            "Effort is directed toward activities that do not advance the core objective.",
-        "pressure_avoidance":
-            "Pressure is being managed through avoidance rather than absorption, limiting sustained performance at full capacity.",
-        "execution_avoidance":
-            "Time and attention are allocated to reducing immediate discomfort rather than generating forward progress.",
-        "resource_misuse":
-            "Resources are primarily expended on symptom management instead of addressing root causes.",
-        "relationship_constraint":
-            "Certain relationships are being preserved at the expense of required honesty or ambition.",
-        "threshold_fear":
-            "Growth is constrained to avoid the increased responsibility and visibility that come with higher performance.",
-    }
-    return synthesis.get(
-        topic,
-        "Multiple patterns are present at comparable strength, preventing a single dominant interference from emerging."
-    )
+
 
 def topic_title(topic: str) -> str:
     return {
@@ -111,7 +93,16 @@ def topic_title(topic: str) -> str:
         "pressure_avoidance": "Pressure Avoidance",
         "execution_avoidance": "Execution Avoidance",
         "resource_misuse": "Resource Misuse",
-        "relationship_constraint": "Relationship Constraint",
+        "relationsdef synthesize(topic: str) -> str:
+    synthesis = {
+        "misalignment": "Effort is directed toward activities that do not advance the core objective.",
+        "pressure_avoidance": "Pressure is managed through avoidance rather than absorption, limiting sustained performance at full capacity.",
+        "execution_avoidance": "Time and attention are allocated to reducing immediate discomfort rather than generating forward progress.",
+        "resource_misuse": "Resources are primarily expended on symptom management instead of addressing root causes.",
+        "relationship_constraint": "Certain relationships or dynamics are preserved at the expense of required honesty or ambition.",
+        "threshold_fear": "Growth is constrained to avoid the increased responsibility and visibility associated with higher performance.",
+    }
+    return synthesis.get(topic, "Multiple patterns are present at comparable strength, preventing a single dominant interference from emerging.")hip_constraint": "Relationship Constraint",
         "threshold_fear": "Threshold Fear",
     }.get(topic, topic.replace("_", " ").title())
 
